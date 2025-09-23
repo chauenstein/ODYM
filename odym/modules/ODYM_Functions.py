@@ -24,6 +24,7 @@ Repository for this class, documentation, and tutorials: https://github.com/IndE
 2025-09-23, chauenstein: ODYM structure as of Feb 16, 2025 (before major restructuring of odym package)
 but following changes compared to commit a6afd8c78aae5ccdffb30e766d882ff27cc33ea4 (Feb 16, 2025)
 * 2025-06-05: reduce processing_methods block' indent
+* 2025-09: in Processing_methods --> interpolate: test if negative target values are included (thus, desired), if yes, no correction of negative values
 * 2025-09-23: replace deprecated (numpy 1.xx) np.product and np.cumproduct with np.prod and np.cumprod, respectively
 """
 
