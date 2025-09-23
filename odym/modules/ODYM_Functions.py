@@ -20,6 +20,12 @@ dependencies:
 Repository for this class, documentation, and tutorials: https://github.com/IndEcol/ODYM
 
 """
+"""
+2025-09-23, chauenstein: ODYM structure as of Feb 16, 2025 (before major restructuring of odym package)
+but following changes compared to commit a6afd8c78aae5ccdffb30e766d882ff27cc33ea4 (Feb 16, 2025)
+* 2025-06-05: reduce processing_methods block' indent
+* 2025-09-23: replace deprecated (numpy 1.xx) np.product and np.cumproduct with np.prod and np.cumprod, respectively
+"""
 
 import os
 import logging
@@ -179,7 +185,7 @@ def Tuple_MI(Tuple, IdxLength):
     A =  IdxLength[1:] +  IdxLength[:1] # Shift 1 to left
     A[-1] = 1 # Replace lowest index by 1
     A.reverse()
-    IdxPosOffset = np.cumproduct(A).tolist()
+    IdxPosOffset = np.cumprod(A).tolist()
     IdxPosOffset.reverse()
     Position = np.sum([a*b for a,b in zip(Tuple,IdxPosOffset)])
     return Position
@@ -762,7 +768,7 @@ def ReadParameterV2(ParPath, ThisPar, ThisParIx, IndexMatch, ThisParLayerSel, Ma
 
         # Read parameter values into array, uncertainty into list:
         Values      = np.zeros((IndexSizesM)) # Array for parameter values
-        Uncertainty = [None] * np.product(IndexSizesM) # parameter value uncertainties  
+        Uncertainty = [None] * np.prod(IndexSizesM) # parameter value uncertainties  
         ValIns      = np.zeros((IndexSizesM)) # Array to check how many values are actually loaded
         ValuesSheet = Parfile.sheet_by_name('Values_Master')
         ColOffset = len(IList)
@@ -863,7 +869,7 @@ def ReadParameterV2(ParPath, ThisPar, ThisParIx, IndexMatch, ThisParLayerSel, Ma
         
         # Read parameter values into array:
         Values      = np.zeros((IndexSizesM)) # Array for parameter values
-        Uncertainty = [None] * np.product(IndexSizesM) # parameter value uncertainties  
+        Uncertainty = [None] * np.prod(IndexSizesM) # parameter value uncertainties  
         ValIns      = np.zeros((IndexSizesM)) # Array to check how many values are actually loaded, contains 0 or 1.
         ValuesSheet = Parfile.sheet_by_name(ValueList[ThisParLayerSel[0]])
         if ParseUncertainty == True:
@@ -1026,7 +1032,7 @@ def ReadParameterXLSX(ParPath, ThisPar, ThisParIx, IndexMatch, ThisParLayerSel, 
             IndexSizesM.append(IndexTable.set_index('IndexLetter').loc[ThisDim]['IndexSize'])
         # Read parameter values into array, uncertainty into list:
         Values      = np.zeros((IndexSizesM)) # Array for parameter values
-        Uncertainty = [None] * np.product(IndexSizesM) # parameter value uncertainties  
+        Uncertainty = [None] * np.prod(IndexSizesM) # parameter value uncertainties  
         ValIns      = np.zeros((IndexSizesM)) # Array to check how many values are actually loaded
         ValuesSheet = Parfile['Values_Master']
         ColOffset = len(IList)
@@ -1128,7 +1134,7 @@ def ReadParameterXLSX(ParPath, ThisPar, ThisParIx, IndexMatch, ThisParLayerSel, 
         
         # Read parameter values into array:
         Values      = np.zeros((IndexSizesM)) # Array for parameter values
-        Uncertainty = [None] * np.product(IndexSizesM) # parameter value uncertainties  
+        Uncertainty = [None] * np.prod(IndexSizesM) # parameter value uncertainties  
         ValIns      = np.zeros((IndexSizesM)) # Array to check how many values are actually loaded, contains 0 or 1.
         ValuesSheet = Parfile[ValueList[ThisParLayerSel[0]]]
         if ParseUncertainty == True:
@@ -1198,113 +1204,120 @@ def ReadParameterXLSX(ParPath, ThisPar, ThisParIx, IndexMatch, ThisParLayerSel, 
         Mylog.info(str(ValIns.sum()) + ' of ' + str(np.prod(IndexSizesM)) + ' values for parameter ' + ThisPar +
                    ' were assigned.')
         
-        Processing_methods = eval(ThisParProcMethod)
-        for processing in Processing_methods:
-        
-            if processing == 'none':
-                continue
-                
-            elif processing.startswith('replicate'):
-                if len(ThisParProcMethod.split('_')) != 5:
-                    Mylog.error('Replicate processing error: instruction not recognized for parameter '+ ThisPar + '.')
-                
-                replicateIndex = processing.split('_')[1]
-                targetValue    = processing.split('_')[2]
-                copyValue      = processing.split('_')[4]
-                
-                if replicateIndex not in ThisParIx:
-                    Mylog.error('Replicate processing error: index ' + replicateIndex + ' not a dimension for parameter '+ ThisPar + '.')
-                if copyValue not in IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items:
-                    Mylog.error('Replicate processing error: ' + copyValue   + ' not in the classification for aspect ' + replicateIndex + ' for parameter '+ ThisPar + '.')
-                if targetValue not in IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items:
-                    Mylog.error('Replicate processing error: ' + targetValue + ' not in the classification for aspect ' + replicateIndex + ' for parameter '+ ThisPar + '.')
-                    
-                ix_position = ThisParIx.find(replicateIndex)
-                C_ix = IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items.index(copyValue)
-                T_ix = IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items.index(targetValue)
-                dimensions = Values.shape
-                for indices in np.ndindex(dimensions[:ix_position] + dimensions[ix_position + 1:]):
-                    Values[indices[:ix_position] + (T_ix,) + indices[ix_position:]] = Values[indices[:ix_position] + (C_ix,) + indices[ix_position:]]
-                Mylog.info('Replicated ' + copyValue + ' values in ' + targetValue + ' for aspect ' + replicateIndex + ' for parameter '+ ThisPar + '.')
+    Processing_methods = eval(ThisParProcMethod) # 2025-06-05: reduce processing_methods block' indent such that outside 'if ParHeader.cell(ri,2).value == 'TABLE':' block.
+    for processing in Processing_methods:
     
-    
-            elif processing.startswith('interpolate'):
-                if len(processing.split('_')) != 5:
-                    Mylog.error('Interpolate processing error: instruction not recognized for parameter '+ ThisPar + '.')
-                interpIndex = processing.split('_')[1]
-                startValue  = int(processing.split('_')[2])
-                endValue    = int(processing.split('_')[3])
-                method      = processing.split('_')[4]
-                  
-                if interpIndex not in ThisParIx:
-                    Mylog.error('Interpolation processing error: index ' + interpIndex + ' not a dimension for parameter '+ ThisPar + '.')
-                if startValue not in IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items:
-                    Mylog.error('Interpolation processing error: ' + str(startValue) + ' not in the classification for aspect ' + interpIndex + ' for parameter '+ ThisPar + '.')
-                if endValue not in IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items:
-                    Mylog.error('Interpolation processing error: ' + str(endValue)   + ' not in the classification for aspect ' + interpIndex + ' for parameter '+ ThisPar + '.')
-                    
-                startIndex = IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items.index(startValue)
-                endIndex   = IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items.index(endValue)
-                ix_position = ThisParIx.find(interpIndex)
-                ValIns_b = np.array(ValIns, dtype=bool)
-                dimensions = Values.shape
-                
-                for indices in np.ndindex(dimensions[:ix_position] + dimensions[ix_position + 1:]):
-                    if (ValIns_b[indices[:ix_position] + (startIndex,) + indices[ix_position:]] and ValIns_b[indices[:ix_position] + (endIndex,) + indices[ix_position:]]):
-                        x = [IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items[m] for m in range(startIndex, endIndex+1) if ValIns_b[indices[:ix_position] + (m,) + indices[ix_position:]] ]
-                        y = [Values[indices[:ix_position] + (m,) + indices[ix_position:]] for m in range(startIndex, endIndex+1) if ValIns_b[indices[:ix_position] + (m,) + indices[ix_position:]] ]
-                        if method == 'spline':
-                            clamped_spline = make_interp_spline(x, y, bc_type=([(2, 0)], [(1, 0)])) #spline function, free (2nd derivative=0) for starting boundary condition and clamped (1st derivative=0) for end boundary condition
-                            for m in range(startIndex, endIndex+1):
-                                Values[indices[:ix_position] + (m,) + indices[ix_position:]] = clamped_spline(IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items[m])
-                        elif method == 'linear':
-                            f = interp1d(x, y, kind='linear')
-                            for m in range(startIndex, endIndex+1):
-                                Values[indices[:ix_position] + (m,) + indices[ix_position:]] = f(IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items[m])
-                        else:
-                            Mylog.error('Interpolation error: method ' + method   + ' not recognized for parameter '+ ThisPar + '.')
-                            break
-                    
-                Mylog.info('Intrpolated ' + str(interpIndex) + ' aspect from ' + str(startValue) + ' to ' + str(endValue) + ' for parameter ' + ThisPar + '.')
-                count_neg = (Values<0).sum()   
-                if count_neg >0:
-                    Values[Values<0]=0
-                    Mylog.info(str(count_neg) + ' negative values from spline interpolation set to 0.')
-                
-                
-            elif processing.startswith('copy'): 
-                if len(processing.split('_')) != 5:
-                    Mylog.error('Copy processing error: instruction not recognized for parameter '+ ThisPar + '.')
-                copyIndex    = processing.split('_')[1]
-                cloneValue    = int(processing.split('_')[2])
-                targetValues = processing.split('_')[4].strip('[]')
-                
-                if ',' in targetValues:
-                    targetList = [int(m) for m in targetValues.split(',')]
-                else:
-                    startValue, endValue = map(int, targetValues.split(':'))
-                    targetList = list(range(startValue, endValue + 1))
-                
-                if copyIndex not in ThisParIx:
-                    Mylog.error('Copy processing error: index ' + copyIndex + ' not a dimension for parameter '+ ThisPar + '.')
-                if cloneValue not in IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items:
-                    Mylog.error('Copy processing error: ' + cloneValue + ' not in the classification for aspect ' + copyIndex + ' for parameter '+ ThisPar + '.')
-                if not set(targetList).issubset(IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items):
-                    Mylog.error('Copy processing error: ' + str(targetList)   + ' not entirely in the classification for aspect ' + copyIndex + ' for parameter '+ ThisPar + '.')
-                
-                ix_position = ThisParIx.find(copyIndex)
-                cloneIndex = IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items.index(cloneValue)
-                dimensions = Values.shape
-                for indices in np.ndindex(dimensions[:ix_position] + dimensions[ix_position + 1:]):
-                    for target in targetList:
-                        targetIndex = IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items.index(target)
-                        Values[indices[:ix_position] + (targetIndex,) + indices[ix_position:]] = Values[indices[:ix_position] + (cloneIndex,) + indices[ix_position:]]
-                Mylog.info('Copied  ' + str(len(targetList)) + ' values for aspect ' + copyIndex + ' for parameter ' + ThisPar + '.')
-                    
-                
-            else:
-                Mylog.error('Data processing error: instruction not recognized for parameter '+ ThisPar + '.')
+        if processing == 'none':
+            continue
             
+        elif processing.startswith('replicate'):
+            if len(ThisParProcMethod.split('_')) != 5:
+                Mylog.error('Replicate processing error: instruction not recognized for parameter '+ ThisPar + '.')
+            
+            replicateIndex = processing.split('_')[1]
+            targetValue    = processing.split('_')[2]
+            copyValue      = processing.split('_')[4]
+            
+            if replicateIndex not in ThisParIx:
+                Mylog.error('Replicate processing error: index ' + replicateIndex + ' not a dimension for parameter '+ ThisPar + '.')
+            if copyValue not in IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items:
+                Mylog.error('Replicate processing error: ' + copyValue   + ' not in the classification for aspect ' + replicateIndex + ' for parameter '+ ThisPar + '.')
+            if targetValue not in IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items:
+                Mylog.error('Replicate processing error: ' + targetValue + ' not in the classification for aspect ' + replicateIndex + ' for parameter '+ ThisPar + '.')
+                
+            ix_position = ThisParIx.find(replicateIndex)
+            C_ix = IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items.index(copyValue)
+            T_ix = IndexTable.set_index('IndexLetter').loc[replicateIndex].Classification.Items.index(targetValue)
+            dimensions = Values.shape
+            for indices in np.ndindex(dimensions[:ix_position] + dimensions[ix_position + 1:]):
+                Values[indices[:ix_position] + (T_ix,) + indices[ix_position:]] = Values[indices[:ix_position] + (C_ix,) + indices[ix_position:]]
+            Mylog.info('Replicated ' + copyValue + ' values in ' + targetValue + ' for aspect ' + replicateIndex + ' for parameter '+ ThisPar + '.')
+
+
+        elif processing.startswith('interpolate'):
+            if len(processing.split('_')) != 5:
+                Mylog.error('Interpolate processing error: instruction not recognized for parameter '+ ThisPar + '.')
+            interpIndex = processing.split('_')[1]
+            startValue  = int(processing.split('_')[2])
+            endValue    = int(processing.split('_')[3])
+            method      = processing.split('_')[4]
+              
+            if interpIndex not in ThisParIx:
+                Mylog.error('Interpolation processing error: index ' + interpIndex + ' not a dimension for parameter '+ ThisPar + '.')
+            if startValue not in IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items:
+                Mylog.error('Interpolation processing error: ' + str(startValue) + ' not in the classification for aspect ' + interpIndex + ' for parameter '+ ThisPar + '.')
+            if endValue not in IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items:
+                Mylog.error('Interpolation processing error: ' + str(endValue)   + ' not in the classification for aspect ' + interpIndex + ' for parameter '+ ThisPar + '.')
+                
+            startIndex = IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items.index(startValue)
+            endIndex   = IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items.index(endValue)
+            ix_position = ThisParIx.find(interpIndex)
+            ValIns_b = np.array(ValIns, dtype=bool)
+            dimensions = Values.shape
+            
+            for indices in np.ndindex(dimensions[:ix_position] + dimensions[ix_position + 1:]):
+                if (ValIns_b[indices[:ix_position] + (startIndex,) + indices[ix_position:]] and ValIns_b[indices[:ix_position] + (endIndex,) + indices[ix_position:]]):
+                    x = [IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items[m] for m in range(startIndex, endIndex+1) if ValIns_b[indices[:ix_position] + (m,) + indices[ix_position:]] ]
+                    y = [Values[indices[:ix_position] + (m,) + indices[ix_position:]] for m in range(startIndex, endIndex+1) if ValIns_b[indices[:ix_position] + (m,) + indices[ix_position:]] ]
+                    if method == 'spline':
+                        clamped_spline = make_interp_spline(x, y, bc_type=([(2, 0)], [(1, 0)])) #spline function, free (2nd derivative=0) for starting boundary condition and clamped (1st derivative=0) for end boundary condition
+                        for m in range(startIndex, endIndex+1):
+                            Values[indices[:ix_position] + (m,) + indices[ix_position:]] = clamped_spline(IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items[m])
+                    elif method == 'linear':
+                        f = interp1d(x, y, kind='linear')
+                        for m in range(startIndex, endIndex+1):
+                            Values[indices[:ix_position] + (m,) + indices[ix_position:]] = f(IndexTable.set_index('IndexLetter').loc[interpIndex].Classification.Items[m])
+                    else:
+                        Mylog.error('Interpolation error: method ' + method   + ' not recognized for parameter '+ ThisPar + '.')
+                        break
+                
+            Mylog.info('Intrpolated ' + str(interpIndex) + ' aspect from ' + str(startValue) + ' to ' + str(endValue) + ' for parameter ' + ThisPar + '.')
+            count_neg = (Values<0).sum()
+            if count_neg > 0:
+                if min(y) <0: # test if negative target values are included (thus, desired), if yes, no correction of negative values
+                    Mylog.info(
+                        "Interpolation contains negative target values, thus no correction for negative values."                        
+                    )
+                else:
+                    Values[Values < 0] = 0
+                    Mylog.info(
+                        str(count_neg)
+                        + " negative values from spline interpolation set to 0."
+                    ) 
+            
+        elif processing.startswith('copy'): 
+            if len(processing.split('_')) != 5:
+                Mylog.error('Copy processing error: instruction not recognized for parameter '+ ThisPar + '.')
+            copyIndex    = processing.split('_')[1]
+            cloneValue    = int(processing.split('_')[2])
+            targetValues = processing.split('_')[4].strip('[]')
+            
+            if ',' in targetValues:
+                targetList = [int(m) for m in targetValues.split(',')]
+            else:
+                startValue, endValue = map(int, targetValues.split(':'))
+                targetList = list(range(startValue, endValue + 1))
+            
+            if copyIndex not in ThisParIx:
+                Mylog.error('Copy processing error: index ' + copyIndex + ' not a dimension for parameter '+ ThisPar + '.')
+            if cloneValue not in IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items:
+                Mylog.error('Copy processing error: ' + cloneValue + ' not in the classification for aspect ' + copyIndex + ' for parameter '+ ThisPar + '.')
+            if not set(targetList).issubset(IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items):
+                Mylog.error('Copy processing error: ' + str(targetList)   + ' not entirely in the classification for aspect ' + copyIndex + ' for parameter '+ ThisPar + '.')
+            
+            ix_position = ThisParIx.find(copyIndex)
+            cloneIndex = IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items.index(cloneValue)
+            dimensions = Values.shape
+            for indices in np.ndindex(dimensions[:ix_position] + dimensions[ix_position + 1:]):
+                for target in targetList:
+                    targetIndex = IndexTable.set_index('IndexLetter').loc[copyIndex].Classification.Items.index(target)
+                    Values[indices[:ix_position] + (targetIndex,) + indices[ix_position:]] = Values[indices[:ix_position] + (cloneIndex,) + indices[ix_position:]]
+            Mylog.info('Copied  ' + str(len(targetList)) + ' values for aspect ' + copyIndex + ' for parameter ' + ThisPar + '.')
+                
+            
+        else:
+            Mylog.error('Data processing error: instruction not recognized for parameter '+ ThisPar + '.')
+        
                 
     if ParseUncertainty == True:
         return MetaData, Values, Uncertainty
