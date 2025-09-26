@@ -1300,11 +1300,16 @@ def ReadParameterXLSX(
             )
             count_neg = (Values < 0).sum()
             if count_neg > 0:
-                Values[Values < 0] = 0
-                Mylog.info(
-                    str(count_neg)
-                    + " negative values from spline interpolation set to 0."
-                )
+                if min(y) <0: # test if negative target values are included (thus, desired), if yes, no correction of negative values
+                    Mylog.info(
+                        "Interpolation contains negative target values, thus no correction for negative values."                        
+                    )
+                else:
+                    Values[Values < 0] = 0
+                    Mylog.info(
+                        str(count_neg)
+                        + " negative values from spline interpolation set to 0."
+                    )
 
         elif processing.startswith("copy"):
             if len(processing.split("_")) != 5:
