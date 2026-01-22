@@ -1440,11 +1440,36 @@ def check_dataset(path,PL_Names,PL_Version,PL_SubFolder,Mylog):
     :param Mylog: log file
 
     """
+    # 2026-01-22, ch: improve error reporting to report which file is missing in "default" data folder as well; works, but could still be improved
+    for m in range(len(PL_Names)):
+        # Construct the filename once to keep it clean
+        filename = PL_Names[m] + '_' + PL_Version[m] + '.xlsx'
+        
+        # Check 1: Is the file in the main path?
+        if filename not in os.listdir(path):
+            
+            # Construct the full path to the potential subfolder
+            subfolder_path = os.path.join(path, PL_SubFolder[m])
+            
+            # Check 2: Does the subfolder actually exist?
+            # This handles the 'default' case (where the folder doesn't exist)
+            # without crashing the script.
+            if os.path.exists(subfolder_path):
+                if filename not in os.listdir(subfolder_path):
+                    Mylog.error(filename + ' not in the dataset.')
+            else:
+                # If the subfolder doesn't exist, and the file wasn't in the main path, it is missing.
+                Mylog.error(filename + ' not in the dataset.')
+        
+    # previous version; did result in misleading error message "FileNotFoundError: [WinError 3] 
+    # The system cannot find the path specified: 'DATA_PATH\\default' " in case that a parameter file
+    # was missing in the "default" data folder
+    '''
     for m in range(len(PL_Names)):
         if PL_Names[m]+'_'+PL_Version[m]+'.xlsx' not in os.listdir(path):
             if PL_Names[m]+'_'+PL_Version[m]+'.xlsx' not in os.listdir(os.path.join(path, PL_SubFolder[m])):
                 Mylog.error(PL_Names[m]+'_'+PL_Version[m]+'.xlsx not in the dataset.')
-    
+    '''
     
 # The End
 
